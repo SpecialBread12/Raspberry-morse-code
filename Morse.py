@@ -1,50 +1,120 @@
 import RPi.GPIO as GPIO
 import time
 
-# Configuration du GPIO
-LED_PIN = 17
-GPIO.setmode(GPIO.BCM)
-GPIO.setup(LED_PIN, GPIO.OUT)
+# --------------------------
+# Configuration GPIO
+# --------------------------
 
-# Dictionnaire Morse
-MORSE_CODE = {
-    'A': '.-', 'B': '-...', 'C': '-.-.', 'D': '-..', 'E': '.',
-    'F': '..-.', 'G': '--.', 'H': '....', 'I': '..', 'J': '.---',
-    'K': '-.-', 'L': '.-..', 'M': '--', 'N': '-.', 'O': '---',
-    'P': '.--.', 'Q': '--.-', 'R': '.-.', 'S': '...', 'T': '-',
-    'U': '..-', 'V': '...-', 'W': '.--', 'X': '-..-', 'Y': '-.--',
-    'Z': '--..', '0': '-----', '1': '.----', '2': '..---', '3': '...--',
-    '4': '....-', '5': '.....', '6': '-....', '7': '--...', '8': '---..',
-    '9': '----.'
+LED_PIN = 18  # La LED pour le morse
+SEGMENTS = {
+    'a': 4,
+    'b': 17,
+    'c': 27,
+    'd': 22,
+    'e': 5,
+    'f': 6,
+    'g': 13
 }
 
-# Durées en secondes
-DOT_DURATION = 0.2
-DASH_DURATION = DOT_DURATION * 3
-SPACE_DURATION = DOT_DURATION * 7
-LETTER_GAP = DOT_DURATION * 3
-SYMBOL_GAP = DOT_DURATION
+# --------------------------
+# Lettres → segments à allumer
+# --------------------------
+LETTER_SEGMENTS = {
+    'A': ['a', 'b', 'c', 'e', 'f', 'g'],
+    'B': ['c', 'd', 'e', 'f', 'g'],
+    'C': ['a', 'd', 'e', 'f'],
+    'D': ['b', 'c', 'd', 'e', 'g'],
+    'E': ['a', 'd', 'e', 'f', 'g'],
+    'F': ['a', 'e', 'f', 'g'],
+    # Ajoute plus de lettres au besoin
+}
 
-def blink_led(duration):
+# --------------------------
+# Table de conversion Morse
+# --------------------------
+MORSE_CODE = {
+    'A': '.-',     'B': '-...',   'C': '-.-.',
+    'D': '-..',    'E': '.',      'F': '..-.',
+    'G': '--.',    'H': '....',   'I': '..',
+    'J': '.---',   'K': '-.-',    'L': '.-..',
+    'M': '--',     'N': '-.',     'O': '---',
+    'P': '.--.',   'Q': '--.-',   'R': '.-.',
+    'S': '...',    'T': '-',      'U': '..-',
+    'V': '...-',   'W': '.--',    'X': '-..-',
+    'Y': '-.--',   'Z': '--..',
+    '1': '.----',  '2': '..---',  '3': '...--',
+    '4': '....-',  '5': '.....',  '6': '-....',
+    '7': '--...',  '8': '---..',  '9': '----.',
+    '0': '-----'
+}
+
+# --------------------------
+# Setup GPIO
+# --------------------------
+def setup():
+    GPIO.setmode(GPIO.BCM)
+    GPIO.setup(LED_PIN, GPIO.OUT)
+    for pin in SEGMENTS.values():
+        GPIO.setup(pin, GPIO.OUT)
+        GPIO.output(pin, GPIO.LOW)
+
+# --------------------------
+# Fonctions de contrôle
+# --------------------------
+def clear_display():
+    for pin in SEGMENTS.values():
+        GPIO.output(pin, GPIO.LOW)
+
+def display_letter(letter):
+    clear_display()
+    upper = letter.upper()
+    if upper in LETTER_SEGMENTS:
+        for seg in LETTER_SEGMENTS[upper]:
+            GPIO.output(SEGMENTS[seg], GPIO.HIGH)
+
+def dot():
     GPIO.output(LED_PIN, GPIO.HIGH)
-    time.sleep(duration)
+    time.sleep(0.2)
     GPIO.output(LED_PIN, GPIO.LOW)
-    time.sleep(SYMBOL_GAP)
+    time.sleep(0.2)
 
-def text_to_morse(text):
-    for char in text.upper():
-        if char == ' ':
-            time.sleep(SPACE_DURATION)
-        elif char in MORSE_CODE:
-            for symbol in MORSE_CODE[char]:
-                if symbol == '.':
-                    blink_led(DOT_DURATION)
-                elif symbol == '-':
-                    blink_led(DASH_DURATION)
-            time.sleep(LETTER_GAP)
+def dash():
+    GPIO.output(LED_PIN, GPIO.HIGH)
+    time.sleep(0.6)
+    GPIO.output(LED_PIN, GPIO.LOW)
+    time.sleep(0.2)
 
-try:
-    text = input("Entrez le texte à transmettre en Morse : ")
-    text_to_morse(text)
-finally:
-    GPIO.cleanup()
+def transmit_morse(message):
+    for char in message:
+        upper = char.upper()
+        if upper == ' ':
+            time.sleep(0.6)  # Pause entre les mots
+            continue
+
+        display_letter(upper)
+        morse = MORSE_CODE.get(upper, '')
+        print(f"{upper} : {morse}")
+        
+        for symbol in morse:
+            if symbol == '.':
+                dot()
+            elif symbol == '-':
+                dash()
+        clear_display()
+        time.sleep(0.6)  # Pause entre les lettres
+
+# --------------------------
+# Exécution
+# --------------------------
+if __name__ == '__main__':
+    try:
+        setup()
+        message = input("Entrez un message à transmettre en morse : ")
+        transmit_morse(message)
+
+    except KeyboardInterrupt:
+        print("\nInterruption par l'utilisateur.")
+
+    finally:
+        clear_display()
+        GPIO.cleanup()
