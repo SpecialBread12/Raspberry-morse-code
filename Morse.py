@@ -5,15 +5,15 @@ import time
 # Configuration GPIO
 # --------------------------
 
-LED_PIN = 18  # La LED pour le morse
+LED_PIN = 26  # La LED pour le morse
 SEGMENTS = {
-    'a': 4,
-    'b': 17,
-    'c': 27,
-    'd': 22,
-    'e': 5,
-    'f': 6,
-    'g': 13
+    'a': 22,
+    'b': 23,
+    'c': 16,
+    'd': 25,
+    'e': 24,
+    'f': 27,
+    'g': 17
 }
 
 # --------------------------
